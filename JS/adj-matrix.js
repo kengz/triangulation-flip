@@ -47,6 +47,10 @@ var GtoM = function(g) {
 // quad searcher
 // single-diag checker
 
+/////////////////////
+// 1. Cycle finder //
+/////////////////////
+
 // All the 4-cycles (quadrilaterals) in the graph
 // Note that when the convex hull's vertices are ordered clockwise, all unique cycles are ordered. Thus for any two cycles equivalent when sorted, they are the same cycles.
 var cycles;
@@ -76,34 +80,6 @@ var hasSubset = function(cycles, arr) {
 	return isSub;
 }
 
-
-// Helper: recursive method to find quad-cycles in the graph, starting from a node = key
-var findCycles = function(g, key, i, ar) {
-	// control: i = len of array
-	i++;
-	// copy the ar, and push the key
-	var cpy = ar.slice(0);
-	cpy.push(key);
-	// Then for each value (connected vertex) for the key
-	_.each(g[key], function(val) {
-		if (i < 4+1) {
-			// recurse with val, find next connected vertex
-			findCycles(g, val, i, cpy);
-		}
-	});
-	// when array has 5 nodes for quadrilateral cycle
-	if (i == 4+1) {
-		// quad = all but last of cpy,
-		var quad = _.sortBy(_.initial(cpy));
-		// check valid quad cycle:
-		// quad uniq, and first = last node in cpy
-		if (_.size(_.uniq(quad)) == 4 && (_.first(cpy) == _.last(cpy)) ) {
-			// if the quadrilateral is new, add to cycles
-			if (!hasSubset(cycles, quad)) { cycles.push(quad); };
-		}
-	}
-}
-
 // Helper: recursive method to find N-cycles in the graph, starting from a node = key
 var findCyclesN = function(g, key, i, ar) {
 	// control: i = len of array
@@ -115,7 +91,6 @@ var findCyclesN = function(g, key, i, ar) {
 	_.each(g[key], function(val) {
 		// while cycle isn't completed, recurse, up till the largest possible N-cycle. By Pigeon-hole: if encounter first duplicate, terminate
 		if (_.size(_.uniq(cpy)) == _.size(cpy)) {
-			console.log("entering by diff, at ", i , cpy);
 			findCyclesN(g, val, i, cpy);
 		}
 	});
@@ -125,20 +100,9 @@ var findCyclesN = function(g, key, i, ar) {
 		var cyc = _.sortBy(_.initial(cpy));
 			// if the cyc is new, add to cycles
 			if (!hasSubset(cycles, cyc)) { cycles.push(cyc); };
+		}
 	}
-}
 
-
-// Find all cycles (for all nodes) in graph g
-var findAllCycles = function(g) {
-	// reset the cycles
-	cycles = [];
-	// find the cycles for g, by running through each node
-	_.each(_.keys(g), function(node) {
-		findCycles(g, node, 0, []);
-	});
-	return cycles;
-}
 // Find all cycles (for all nodes) in graph g
 var findAllCyclesN = function(g) {
 	// reset the cycles
@@ -158,11 +122,54 @@ var cycleK = function(k) {
 }
 
 
+
+
+// var g1c = findAllCyclesN(g1);
+// console.log(g1c);
+// console.log(cycleK(3));
+// console.log(cycleK(4));
+// var g2c = findAllCyclesN(g2);
+// console.log(g2c);
+
+
+
+
+
+///////////////////////////
+// Triangulation checker //
+///////////////////////////
+
+// first gotta find all cycles, then can use the cycleK() function
+
+// verify whether Triangulation is valid
+var verifyTri = function() {
+	// initially valids
+	var valid = true;
+	// All transformable from the fan: which has N-1 spokes, -2 + N for the N-cycle, total = N-1-2+N = 2N-3 edges.
+	var cyc2 = cycleK(2);
+	if (cyc2.length != 2*N-3) {
+		return false;
+	};
+	// Inner edges: N-1 spokes minus two adjacent = N-3
+	var innerE = _.filter(cyc2, function(arr) {
+		return (arr[1]-arr[0] != 1 && arr[1]-arr[0] != N-1);
+	});
+	if (innerE.length != N-3) {
+		return false;
+	};
+	// Finally, gradually remove each outermost vertex for each triangle, until the last triangle is removed, left with an edge of 2 vertices. Total triangles = N-2.
+	if (cycleK(3).length != N-2) {
+		return false;
+	};
+	return valid;
+}
+
+
+// verify convex hull is properly triangulated
 var g1c = findAllCyclesN(g1);
 console.log(g1c);
-console.log(cycleK(3));
-console.log(cycleK(4));
-// var g2c = findAllCycles(g2);
-// console.log(g2c);
+console.log(verifyTri());
+
+
 
 
